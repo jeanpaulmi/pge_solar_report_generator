@@ -217,9 +217,38 @@ def _split_s3_uri(uri: str) -> tuple[str, str]:
     return bucket, key
 
 
+def validate_s3_config() -> None:
+    """Fail fast on a staging location we will not be able to read back.
+
+    Athena writes results to ATHENA_S3_STAGING_DIR and we then download them.
+    REPORT_S3_BUCKET is the publish target and is write-only under the current
+    account policy (it denies s3:GetObject), so the two must never be the same
+    bucket -- otherwise the query runs and bills us before failing on download.
+    """
+    settings = get_settings()
+    staging = settings.ATHENA_S3_STAGING_DIR.strip()
+
+    if not staging.startswith("s3://"):
+        raise AthenaQueryError(
+            f"ATHENA_S3_STAGING_DIR must be an s3:// uri, got {staging!r} (check .env)"
+        )
+
+    staging_bucket, _ = _split_s3_uri(staging)
+    if staging_bucket == settings.REPORT_S3_BUCKET:
+        raise AthenaQueryError(
+            f"ATHENA_S3_STAGING_DIR is in {staging_bucket!r}, which is also "
+            f"REPORT_S3_BUCKET (the publish target).\n"
+            f"        That bucket is write-only -- it denies s3:GetObject -- so Athena "
+            f"results written there cannot be read back.\n"
+            f"        Point ATHENA_S3_STAGING_DIR in .env at the Athena results bucket, "
+            f"e.g. s3://aws-athena-query-results-<account>-<region>/<you>/"
+        )
+
+
 def run_query(session: boto3.Session, sql: str, database: str) -> str:
     """Run ``sql`` against ``database`` and return the S3 uri of the result CSV."""
     settings = get_settings()
+    validate_s3_config()
     athena = session.client("athena")
 
     print(f"[athena] submitting query against {database} ...")
@@ -271,7 +300,15 @@ def fetch_result_rows(session: boto3.Session, output_location: str) -> Iterator[
     handle, tmp_path = tempfile.mkstemp(prefix="athena_result_", suffix=".csv")
     os.close(handle)
     try:
-        s3.download_file(bucket, key, tmp_path)
+        try:
+            s3.download_file(bucket, key, tmp_path)
+        except ClientError as exc:
+            raise AthenaQueryError(
+                f"could not read Athena results from {output_location}: {exc}\n"
+                f"        gridx-temp denies s3:GetObject; ATHENA_S3_STAGING_DIR in .env must "
+                f"point at a readable bucket, e.g. "
+                f"s3://aws-athena-query-results-743512984079-us-west-2/<you>/"
+            ) from exc
         with open(tmp_path, newline="", encoding="utf-8") as fh:
             yield from csv.reader(fh)
     finally:

@@ -67,8 +67,13 @@ sso_region = us-west-2
 sso_registration_scopes = sso:account:access
 ```
 
-You need read access to the `pge*` Athena databases and read/write on
-`s3://gridx-temp/jpm/`. No need to log in first — see *Credentials* below.
+You need read access to the `pge*` Athena databases, read/write on
+`s3://aws-athena-query-results-743512984079-us-west-2/` (Athena results), and
+write on `s3://gridx-temp/jpm/` (published output). `gridx-temp` denies
+`s3:GetObject`, so it cannot be used as `ATHENA_S3_STAGING_DIR` — the scripts check
+this at startup and refuse to run before submitting a query, rather than failing
+after you have already paid for the scan. No need to log in first — see
+*Credentials* below.
 
 ### Environment file
 
