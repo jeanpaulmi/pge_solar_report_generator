@@ -9,21 +9,22 @@ set -euo pipefail
 # ---------------------------------------------------------------- CONFIG ----
 
 # Athena database / environment: pge_stage | pge_uat | pge  (pge == prod)
-DATABASE="pge_stage"
+DATABASE="pge"
 
 # Season: Spring | Summer | Fall | Winter | All
-SEASON="Fall"
+SEASON="Winter"
 
 # Azkaban batch ids to include. Add or remove lines as needed.
 BATCH_IDS=(
-  "azkaban_PGE_on_demand_batch_operation_224412"
-  "azkaban_PGE_on_demand_batch_operation_224437"
-  "azkaban_PGE_on_demand_batch_operation_224448"
-  "azkaban_PGE_on_demand_batch_operation_224465"
-  "azkaban_PGE_on_demand_batch_operation_224531"
+  # "azkaban_PGE_on_demand_batch_operation_224412"
+  # "azkaban_PGE_on_demand_batch_operation_224437"
+  # "azkaban_PGE_on_demand_batch_operation_224448"
+  # "azkaban_PGE_on_demand_batch_operation_224465"
+  # "azkaban_PGE_on_demand_batch_operation_224531"
+  "azkaban_PGE_pge_on_demand_batch_252721"
 )
 
-# Bill years. Leave empty to auto-derive (current year - 1, current year).
+# Bill year. Leave empty to auto-derive the report year (current year - 1, e.g. 2026 - 1 = 2025).
 BILL_YEARS=""
 
 # Column delimiter for the .txt output: tab | comma | pipe | semicolon

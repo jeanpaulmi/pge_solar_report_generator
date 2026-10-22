@@ -50,7 +50,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--bill-years",
         default=None,
-        help="Comma separated bill years. Defaults to (current year - 1, current year).",
+        help="Comma separated bill years. Defaults to the report year (current year - 1).",
     )
     parser.add_argument(
         "--delimiter",
@@ -99,7 +99,7 @@ def main() -> int:
     if args.bill_years:
         years = [int(y.strip()) for y in args.bill_years.split(",") if y.strip()]
     else:
-        years = list(au.bill_years())
+        years = [au.report_year()]
 
     batch_ids = [b.strip() for b in args.batch_ids if b.strip()]
     if not batch_ids:

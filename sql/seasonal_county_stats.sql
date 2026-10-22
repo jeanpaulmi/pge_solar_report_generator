@@ -6,7 +6,7 @@
 -- Template variables (substituted by generate_seasonal_report.py):
 --   database   -> pge_stage | pge_uat | pge   (pge == prod)
 --   season     -> Spring | Summer | Fall | Winter | All
---   bill_years -> current calendar year - 1, current calendar year (e.g. 2025, 2026)
+--   bill_years -> report year, i.e. current calendar year - 1 (e.g. 2025)
 --   batch_ids  -> one or more quoted azkaban batch ids, comma separated
 
 WITH

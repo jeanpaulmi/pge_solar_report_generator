@@ -11,7 +11,7 @@ set -euo pipefail
 # Athena database / environment: pge_stage | pge_uat | pge  (pge == prod)
 DATABASE="pge"
 
-# Contract start year floor. Leave empty to auto-derive (current year - 1).
+# Contract start year floor. Leave empty to auto-derive (current year - 1, e.g 2026 - 1 = 2025).
 REPORT_YEAR=""
 
 # Set to "true" to write only the local copy and skip the S3 upload.

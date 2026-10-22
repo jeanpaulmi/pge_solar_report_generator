@@ -26,7 +26,7 @@ SELECT
   -- attr_263
 FROM {{database}}.customerdimension_ba
 WHERE service_status = 'Active'
-  AND contract_start_date >= CAST('{{report_year}}-01-01' AS TIMESTAMP)
+  AND contract_start_date >= CAST('{{report_year}}-01-01' AS TIMESTAMP) -- e.g. CAST('2025-01-01' AS TIMESTAMP)
   AND contract_rate_code = 'EELEC'
   AND contract_scope = 'res'
   AND attr_260 = 'NEM3'

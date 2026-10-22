@@ -160,8 +160,8 @@ Runs [sql/seasonal_county_stats.sql](sql/seasonal_county_stats.sql). Config:
 (bash array — add/remove lines freely), optional `BILL_YEARS`, `DELIMITER`,
 `NO_HEADER`, `FILE_DATE_FORMAT`.
 
-`billyear IN (...)` auto-derives as **(current year − 1, current year)**. Set
-`BILL_YEARS="2024,2025"` to override.
+`billyear IN (...)` auto-derives as the **report year (current year − 1)**. Set
+`BILL_YEARS="2024"` to override.
 
 `DELIMITER` defaults to `tab`. It also accepts `comma`, `pipe`, `semicolon`, an
 escape such as `\t`, or a literal character — the names exist because a shell

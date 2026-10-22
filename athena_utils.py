@@ -43,12 +43,6 @@ def report_year(now: datetime | None = None) -> int:
     return (now or datetime.now()).year - 1
 
 
-def bill_years(now: datetime | None = None) -> tuple[int, int]:
-    """Bill years spanned by the report: (report year, current year)."""
-    current = (now or datetime.now()).year
-    return (current - 1, current)
-
-
 def run_stamp(now: datetime | None = None) -> str:
     """Timestamp used in the run folder name."""
     return (now or datetime.now()).strftime("%Y%m%d_%H%M%S")
