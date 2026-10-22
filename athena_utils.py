@@ -308,6 +308,40 @@ def write_delimited(
     return written
 
 
+_DELIMITER_ALIASES = {
+    "tab": "\t",
+    "\\t": "\t",
+    "comma": ",",
+    "pipe": "|",
+    "semicolon": ";",
+    "space": " ",
+}
+
+
+def resolve_delimiter(value: str) -> str:
+    """Turn a shell-friendly delimiter spec into a single character.
+
+    Accepts a literal character (including an actual tab), a name such as
+    ``tab`` or ``pipe``, or an escape sequence such as ``\\t``. Shell variables
+    cannot easily carry a raw tab, so the name form is the usual way to ask for
+    one from the .sh wrapper.
+    """
+    if len(value) == 1:
+        return value
+
+    alias = _DELIMITER_ALIASES.get(value.strip().lower())
+    if alias:
+        return alias
+
+    decoded = value.encode("utf-8").decode("unicode_escape")
+    if len(decoded) != 1:
+        raise ValueError(
+            f"delimiter must resolve to a single character, got {value!r} "
+            f"(try: tab, comma, pipe, semicolon)"
+        )
+    return decoded
+
+
 def _clean(field: str, delimiter: str) -> str:
     """Strip quoting/newlines so no field is ever wrapped in quotes."""
     value = "" if field is None else str(field)

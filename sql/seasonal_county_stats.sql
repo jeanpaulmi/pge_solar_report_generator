@@ -1,5 +1,7 @@
 -- SEASONAL QUERY: County-level statistics using MEDIAN (APPROX_PERCENTILE 0.5).
--- All money / percentage outputs are rounded to whole numbers (no decimals).
+-- All outputs are rounded to whole numbers (no decimals):
+--   AVG_SOLARCHRG_RANGE -> nearest whole dollar   ($32 - $79)
+--   AVG_SAVINGS_RANGE   -> whole percentages      (64% - 88%)
 --
 -- Template variables (substituted by generate_seasonal_report.py):
 --   database   -> pge_stage | pge_uat | pge   (pge == prod)
@@ -71,6 +73,8 @@ customer_totals AS (
 SELECT
   premise_county AS "PREMISE_COUNTY",
 
+  -- Dollar amounts are rounded to the nearest whole dollar, no decimals
+  -- (e.g. 31.58 - 79.32 renders as $32 - $79).
   CASE
     WHEN APPROX_PERCENTILE(total_solar_charges, 0.5) IS NOT NULL THEN
       CONCAT(

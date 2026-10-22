@@ -26,8 +26,8 @@ BATCH_IDS=(
 # Bill years. Leave empty to auto-derive (current year - 1, current year).
 BILL_YEARS=""
 
-# Column delimiter for the .txt output.
-DELIMITER=","
+# Column delimiter for the .txt output: tab | comma | pipe | semicolon
+DELIMITER="tab"
 
 # Set to "true" to drop the column header row from the .txt output.
 NO_HEADER="false"

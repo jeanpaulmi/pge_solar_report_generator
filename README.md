@@ -158,8 +158,12 @@ Runs [sql/seasonal_county_stats.sql](sql/seasonal_county_stats.sql). Config:
 `billyear IN (...)` auto-derives as **(current year − 1, current year)**. Set
 `BILL_YEARS="2024,2025"` to override.
 
-Output — delimited text, **no quotes on any value**, all currency and percentage
-ranges as whole numbers:
+`DELIMITER` defaults to `tab`. It also accepts `comma`, `pipe`, `semicolon`, an
+escape such as `\t`, or a literal character — the names exist because a shell
+variable cannot easily carry a raw tab.
+
+Output — **tab separated**, **no quotes on any value**. `AVG_SOLARCHRG_RANGE` is
+formatted to exactly 2 decimal places; `AVG_SAVINGS_RANGE` is whole percentages:
 
 ```
 output/<season>_report_<YYYYMMDD_HHMMSS>/SBP_Suplemental_<YYYYMMDD>.txt
@@ -167,8 +171,9 @@ s3://gridx-temp/jpm/pge_solar_report/<season>_report_<YYYYMMDD_HHMMSS>/...
 ```
 
 ```
-PREMISE_COUNTY,AVG_SOLARCHRG_RANGE,AVG_SAVINGS_RANGE,SEASON,CUSTOMER_COUNT
-Santa Clara,$412 - $633,18% - 27%,Fall,1204
+PREMISE_COUNTY	AVG_SOLARCHRG_RANGE	AVG_SAVINGS_RANGE	SEASON	CUSTOMER_COUNT
+Fresno	$77.18 - $111.07	64% - 88%	Fall	8062
+Contra Costa	$71.92 - $109.50	56% - 82%	Fall	7302
 ```
 
 ## Useful flags

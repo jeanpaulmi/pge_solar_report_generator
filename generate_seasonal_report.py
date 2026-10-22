@@ -54,8 +54,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--delimiter",
-        default=",",
-        help="Column delimiter for the .txt output (default: ',').",
+        default="tab",
+        help="Column delimiter for the .txt output: tab, comma, pipe, semicolon, "
+        "an escape such as '\\t', or a literal character (default: tab).",
     )
     parser.add_argument(
         "--no-header",
@@ -93,6 +94,7 @@ def main() -> int:
 
     database = au.validate_database(args.database)
     season = normalize_season(args.season)
+    delimiter = au.resolve_delimiter(args.delimiter)
 
     if args.bill_years:
         years = [int(y.strip()) for y in args.bill_years.split(",") if y.strip()]
@@ -120,6 +122,7 @@ def main() -> int:
     print(f"[config] database   : {database}")
     print(f"[config] season     : {season}")
     print(f"[config] bill years : {', '.join(str(y) for y in years)}")
+    print(f"[config] delimiter  : {delimiter!r}")
     print(f"[config] batch ids  : {len(batch_ids)}")
     for batch_id in batch_ids:
         print(f"[config]              {batch_id}")
@@ -141,7 +144,7 @@ def main() -> int:
     count = au.write_delimited(
         local_path,
         rows,
-        delimiter=args.delimiter,
+        delimiter=delimiter,
         header=None if args.no_header else header,
     )
 
