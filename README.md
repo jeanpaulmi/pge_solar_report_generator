@@ -137,10 +137,11 @@ the non-secret values filled in — copy it to `.env` and add the passwords.
 ```
 
 Runs [sql/contract_ids.sql](sql/contract_ids.sql). Config: `DATABASE`
-(`pge_stage` | `pge_uat` | `pge`), optional `REPORT_YEAR`.
+(`pge_stage` | `pge_uat` | `pge`), `PARTITIONS`, optional `REPORT_YEAR`.
 
-`contract_start_date >= <report year>-01-01`, where the report year auto-derives as
-**current calendar year − 1** (run in 2026 → 2025). Set `REPORT_YEAR` to override.
+`REPORT_YEAR` auto-derives as **current calendar year − 1** (run in 2026 → 2025).
+Note that the `contract_start_date` and `service_status` filters are currently
+commented out in the SQL, so `REPORT_YEAR` has no effect until they are restored.
 
 Output — one contract id per line, **no header, no quotes**:
 
@@ -148,6 +149,30 @@ Output — one contract id per line, **no header, no quotes**:
 output/contract_ids_<YYYYMMDD_HHMMSS>/contract_ids_<YYYYMMDD_HHMMSS>.csv
 s3://gridx-temp/jpm/pge_solar_report/contract_ids_<YYYYMMDD_HHMMSS>/...
 ```
+
+### Splitting across multiple files
+
+Large pulls can be split with `PARTITIONS` in the wrapper (or `--partitions N`).
+`PARTITIONS="1"` is the default and writes the single file named above.
+
+With `N > 1` the ids are divided into `N` near-equal files in the same run folder,
+each one still headerless and unquoted. Any remainder goes to the earliest files,
+so 101 ids over 2 partitions gives 51 + 50:
+
+```
+contract_ids_<YYYYMMDD_HHMMSS>_part1of3.csv
+contract_ids_<YYYYMMDD_HHMMSS>_part2of3.csv
+contract_ids_<YYYYMMDD_HHMMSS>_part3of3.csv
+```
+
+Part numbers are zero padded to the width of `N` (`part01of12` … `part12of12`) so
+the files sort in order. Concatenating the parts reproduces the single-file output
+exactly — no id is dropped, duplicated, or reordered. Every part is uploaded to the
+same S3 run folder.
+
+If `PARTITIONS` exceeds the number of ids returned, the script warns and writes one
+file per id rather than leaving empty files behind. A query returning no rows always
+writes a single empty file.
 
 ## Step 2 — seasonal county report
 

@@ -339,6 +339,34 @@ def write_delimited(
     return written
 
 
+def split_evenly(items: Sequence[str], parts: int) -> list[Sequence[str]]:
+    """Split ``items`` into ``parts`` chunks of as near-equal size as possible.
+
+    Any remainder goes to the earliest chunks, so 101 items over 2 parts gives
+    51 and 50, and 100 over 3 gives 34, 33, 33.
+    """
+    if parts < 1:
+        raise ValueError(f"parts must be >= 1, got {parts}")
+
+    base, extra = divmod(len(items), parts)
+    chunks: list[Sequence[str]] = []
+    start = 0
+    for i in range(parts):
+        size = base + (1 if i < extra else 0)
+        chunks.append(items[start : start + size])
+        start += size
+    return chunks
+
+
+def part_label(index: int, total: int) -> str:
+    """1-based part label, zero padded to the width of ``total``.
+
+    2 parts -> part1of2, part2of2;  12 parts -> part01of12 ... part12of12,
+    so the filenames sort in numeric order.
+    """
+    return f"part{index:0{len(str(total))}d}of{total}"
+
+
 _DELIMITER_ALIASES = {
     "tab": "\t",
     "\\t": "\t",
