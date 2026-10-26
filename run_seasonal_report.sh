@@ -21,7 +21,7 @@ BATCH_IDS=(
   # "azkaban_PGE_on_demand_batch_operation_224448"
   # "azkaban_PGE_on_demand_batch_operation_224465"
   # "azkaban_PGE_on_demand_batch_operation_224531"
-  "azkaban_PGE_pge_on_demand_batch_252826"
+  "azkaban_PGE_pge_on_demand_batch_252882"
 )
 
 # Bill year. Leave empty to auto-derive the report year (current year - 1, e.g. 2026 - 1 = 2025).

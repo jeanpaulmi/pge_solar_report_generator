@@ -14,7 +14,7 @@ DATABASE="pge"
 
 # Batch numbers (or name fragments) to look up. Add or remove lines as needed.
 BATCH_IDS=(
-  "252826"
+  "252882"
 )
 
 # ------------------------------------------------------------ END CONFIG ----
