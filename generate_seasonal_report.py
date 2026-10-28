@@ -26,6 +26,7 @@ from config import get_settings
 SEASONS = ("Spring", "Summer", "Fall", "Winter", "All")
 
 
+
 def normalize_season(value: str) -> str:
     for season in SEASONS:
         if value.strip().lower() == season.lower():
@@ -170,6 +171,12 @@ def main() -> int:
     print(f"[config] database   : {database}")
     print(f"[config] season     : {season}")
     print(f"[config] bill years : {', '.join(str(y) for y in years)}")
+    if season == "Winter":
+        print(
+            "[config]              Winter = Dec of each bill year + Jan/Feb of "
+            f"the year after ({', '.join(f'{y}-12' for y in years)}"
+            f" + {', '.join(f'{y + 1}-01/02' for y in years)})"
+        )
     print(f"[config] delimiter  : {delimiter!r}")
     print(f"[config] batches    : {len(batch_names)}")
     for batch_name in batch_names:

@@ -9,7 +9,7 @@ set -euo pipefail
 # ---------------------------------------------------------------- CONFIG ----
 
 # Athena database / environment: pge_stage | pge_uat | pge  (pge == prod)
-DATABASE="pge"
+DATABASE="pge_stage"
 
 # Season: Spring | Summer | Fall | Winter | All
 SEASON="Winter"
@@ -18,7 +18,9 @@ SEASON="Winter"
 # Each one is looked up in accountbillinglog and shown for confirmation before
 # the report runs. Add or remove lines as needed.
 BATCH_IDS=(
+  # example
   #"252882"
+  #"352883"
 
 # below is pge_stage
 'azkaban_PGE_on_demand_batch_operation_224412'
@@ -32,7 +34,13 @@ BATCH_IDS=(
 # Required for unattended runs, where there is no terminal to answer the prompt.
 AUTO_CONFIRM="false"
 
-# Bill year. Leave empty to auto-derive the report year (current year - 1, e.g. 2026 - 1 = 2025 OR "2025,2026").
+# Bill year(s). ONE comma-separated string: "" OR "2025" OR "2025,2026" for two years, not likely used for this scenario.
+# Empty auto-derives the report year (current year - 1, e.g. 2026 - 1 = 2025).
+#
+# Winter only: leave this EMPTY to get the single winter that spans the year
+# boundary -- Dec of the report year plus Jan/Feb of the year after it.
+# Setting it explicitly for Winter matches Dec, Jan AND Feb in every year
+# listed, so "2025,2026" would pull in six months, not three.
 BILL_YEARS=""
 
 # Column delimiter for the .txt output: tab | comma | pipe | semicolon

@@ -6,7 +6,17 @@
 -- Template variables (substituted by generate_seasonal_report.py):
 --   database   -> pge_stage | pge_uat | pge   (pge == prod)
 --   season     -> Spring | Summer | Fall | Winter | All
---   bill_years -> report year, i.e. current calendar year - 1 (e.g. 2025)
+--   bill_years -> report year(s), i.e. current calendar year - 1 (e.g. 2025)
+--
+-- A bill year names the year a season's FIRST month falls in. For Spring,
+-- Summer, Fall and All that is the whole season, so 2025 means 2025.
+--
+-- Winter spans a year boundary, so bill year 2025 means December 2025 plus
+-- January and February of 2026. The WHERE clause below pairs each month with
+-- its own year to get that. Do NOT filter billmonth and billyear
+-- independently -- billmonth IN (12, 1, 2) AND billyear IN (2025, 2026)
+-- matches all six combinations, including Jan/Feb 2025 and Dec 2026, which
+-- silently widens the population the medians are taken from.
 --   batch_ids  -> one or more quoted azkaban batch ids, comma separated
 
 WITH
@@ -49,14 +59,22 @@ customer_totals AS (
     WHERE batchid IN (
       {{batch_ids}}
     )
+      -- Season and bill year. Each branch pairs the months with the year
+      -- they belong to; Winter's January and February sit in the year AFTER
+      -- its bill year, hence "billyear - 1 IN".
       AND (
-        (selected_season = 'Spring' AND billmonth IN (3, 4, 5))
-        OR (selected_season = 'Summer' AND billmonth IN (6, 7, 8))
-        OR (selected_season = 'Fall' AND billmonth IN (9, 10, 11))
-        OR (selected_season = 'Winter' AND billmonth IN (12, 1, 2))
-        OR (selected_season = 'All')
+        (selected_season = 'Spring' AND billmonth IN (3, 4, 5)
+          AND billyear IN ({{bill_years}}))
+        OR (selected_season = 'Summer' AND billmonth IN (6, 7, 8)
+          AND billyear IN ({{bill_years}}))
+        OR (selected_season = 'Fall' AND billmonth IN (9, 10, 11)
+          AND billyear IN ({{bill_years}}))
+        OR (selected_season = 'Winter' AND (
+             (billmonth = 12 AND billyear IN ({{bill_years}}))
+             OR (billmonth IN (1, 2) AND billyear - 1 IN ({{bill_years}}))
+           ))
+        OR (selected_season = 'All' AND billyear IN ({{bill_years}}))
       )
-      AND billyear IN ({{bill_years}})
       AND premise IS NOT NULL
       AND bill_metrics_alt2 IS NOT NULL
       AND bill_amount_alt2 IS NOT NULL
