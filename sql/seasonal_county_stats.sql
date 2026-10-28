@@ -8,6 +8,10 @@
 --   season     -> Spring | Summer | Fall | Winter | All
 --   bill_years -> report year(s), i.e. current calendar year - 1 (e.g. 2025)
 --
+-- season and bill_years are declared ONCE in the season_input CTE below and
+-- read from there by every branch of the WHERE clause, so running this query
+-- by hand means editing two values in one place, not five OR clauses.
+--
 -- A bill year names the year a season's FIRST month falls in. For Spring,
 -- Summer, Fall and All that is the whole season, so 2025 means 2025.
 --
@@ -21,7 +25,13 @@
 
 WITH
 season_input AS (
-  SELECT '{{season}}' AS selected_season
+  -- THE ONLY TWO VALUES TO EDIT when running this query by hand.
+  --   selected_season : Spring | Summer | Fall | Winter | All
+  --   bill_years      : one or more years, e.g. ARRAY[2025] or ARRAY[2025, 2026]
+  --                     A bill year is the year the season's FIRST month falls
+  --                     in, so Winter 2025 means Dec 2025 + Jan/Feb 2026.
+  SELECT '{{season}}' AS selected_season,
+         ARRAY[{{bill_years}}] AS bill_years
 ),
 customer_totals AS (
   SELECT
@@ -64,16 +74,16 @@ customer_totals AS (
       -- its bill year, hence "billyear - 1 IN".
       AND (
         (selected_season = 'Spring' AND billmonth IN (3, 4, 5)
-          AND billyear IN ({{bill_years}}))
+          AND CONTAINS(bill_years, billyear))
         OR (selected_season = 'Summer' AND billmonth IN (6, 7, 8)
-          AND billyear IN ({{bill_years}}))
+          AND CONTAINS(bill_years, billyear))
         OR (selected_season = 'Fall' AND billmonth IN (9, 10, 11)
-          AND billyear IN ({{bill_years}}))
+          AND CONTAINS(bill_years, billyear))
         OR (selected_season = 'Winter' AND (
-             (billmonth = 12 AND billyear IN ({{bill_years}}))
-             OR (billmonth IN (1, 2) AND billyear - 1 IN ({{bill_years}}))
+             (billmonth = 12 AND CONTAINS(bill_years, billyear))
+             OR (billmonth IN (1, 2) AND CONTAINS(bill_years, billyear - 1))
            ))
-        OR (selected_season = 'All' AND billyear IN ({{bill_years}}))
+        OR (selected_season = 'All' AND CONTAINS(bill_years, billyear))
       )
       AND premise IS NOT NULL
       AND bill_metrics_alt2 IS NOT NULL
