@@ -18,15 +18,21 @@ SEASON="Winter"
 # Each one is looked up in accountbillinglog and shown for confirmation before
 # the report runs. Add or remove lines as needed.
 BATCH_IDS=(
-  "252882"
-  # "252883"
+  #"252882"
+
+# below is pge_stage
+'azkaban_PGE_on_demand_batch_operation_224412'
+'azkaban_PGE_on_demand_batch_operation_224437'
+'azkaban_PGE_on_demand_batch_operation_224448'
+'azkaban_PGE_on_demand_batch_operation_224465'
+'azkaban_PGE_on_demand_batch_operation_224531'
 )
 
 # Set to "true" to skip the confirmation prompt and use every batch found.
 # Required for unattended runs, where there is no terminal to answer the prompt.
 AUTO_CONFIRM="false"
 
-# Bill year. Leave empty to auto-derive the report year (current year - 1, e.g. 2026 - 1 = 2025).
+# Bill year. Leave empty to auto-derive the report year (current year - 1, e.g. 2026 - 1 = 2025 OR "2025,2026").
 BILL_YEARS=""
 
 # Column delimiter for the .txt output: tab | comma | pipe | semicolon
