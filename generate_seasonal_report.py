@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Step 2: build the seasonal county-level SBP supplemental report from Athena.
 
+Batch ids may be given as short batch numbers (e.g. 252882) or as full batch
+names. Either way they are looked up in accountbillinglog first, shown with
+their contract counts, and confirmed at the terminal before the report runs.
+
 Writes an unquoted, delimited text file to:
-  s3://<bucket>/<prefix>/<season>_report_<datetime>/SBP_Suplemental_<date>.txt
-  ./output/<season>_report_<datetime>/SBP_Suplemental_<date>.txt
+  s3://<bucket>/<prefix>/<season>_report_<datetime>/SBP_Supplemental_<date>.txt
+  ./output/<season>_report_<datetime>/SBP_Supplemental_<date>.txt
 
 Configure and run it through ``run_seasonal_report.sh``.
 """
@@ -11,10 +15,12 @@ Configure and run it through ``run_seasonal_report.sh``.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import sys
 from datetime import datetime
 
 import athena_utils as au
+import batch_lookup as bl
 from config import get_settings
 
 SEASONS = ("Spring", "Summer", "Fall", "Winter", "All")
@@ -45,7 +51,17 @@ def parse_args() -> argparse.Namespace:
         action="append",
         required=True,
         metavar="BATCH_ID",
-        help="Azkaban batch id to include. Repeat the flag for multiple ids.",
+        help="Batch number (e.g. 252882) or full batch name. Repeat for several.",
+    )
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skip the confirmation prompt and use every batch found.",
+    )
+    parser.add_argument(
+        "--no-resolve",
+        action="store_true",
+        help="Use --batch-id values verbatim: no lookup, no prompt.",
     )
     parser.add_argument(
         "--bill-years",
@@ -101,9 +117,41 @@ def main() -> int:
     else:
         years = [au.report_year()]
 
-    batch_ids = [b.strip() for b in args.batch_ids if b.strip()]
+    batch_ids = [bl.validate_batch_id(b) for b in args.batch_ids if b.strip()]
     if not batch_ids:
         raise ValueError("at least one --batch-id is required")
+
+    session = None
+    batch_names = batch_ids
+
+    if not args.no_resolve:
+        # Resolve the batch numbers to full batch names and confirm them before
+        # paying for the report query. With --print-sql the lookup still has to
+        # run (the names go into the SQL), so its output is pushed to stderr to
+        # keep stdout pipeable.
+        with contextlib.redirect_stdout(sys.stderr if args.print_sql else sys.stdout):
+            session = au.aws_session(auto_login=not args.no_auto_login)
+            print(f"[batch]  looking up {len(batch_ids)} batch id(s) in accountbillinglog ...")
+            matches, missing = bl.lookup(session, database, batch_ids)
+            bl.print_matches(matches, missing)
+
+            if not matches:
+                raise au.AthenaQueryError(
+                    f"no batch found for {', '.join(batch_ids)} in "
+                    f"{database}.accountbillinglog; nothing to report on"
+                )
+
+            batch_names = [match.name for match in matches]
+
+            if not args.print_sql:
+                question = (
+                    f"\nRun the {season} report on {len(batch_names)} batch(es)"
+                    + (f", ignoring {len(missing)} not found" if missing else "")
+                    + "?"
+                )
+                if not bl.confirm(question, assume_yes=args.yes):
+                    print("[done]   cancelled, no report written")
+                    return 1
 
     sql = au.load_sql(
         "seasonal_county_stats.sql",
@@ -111,7 +159,7 @@ def main() -> int:
             "database": database,
             "season": season,
             "bill_years": ", ".join(str(y) for y in years),
-            "batch_ids": au.quoted_sql_list(batch_ids),
+            "batch_ids": au.quoted_sql_list(batch_names),
         },
     )
 
@@ -123,16 +171,17 @@ def main() -> int:
     print(f"[config] season     : {season}")
     print(f"[config] bill years : {', '.join(str(y) for y in years)}")
     print(f"[config] delimiter  : {delimiter!r}")
-    print(f"[config] batch ids  : {len(batch_ids)}")
-    for batch_id in batch_ids:
-        print(f"[config]              {batch_id}")
+    print(f"[config] batches    : {len(batch_names)}")
+    for batch_name in batch_names:
+        print(f"[config]              {batch_name}")
 
     stamp = au.run_stamp()
     folder = f"{season.lower()}_report_{stamp}"
-    filename = f"SBP_Suplemental_{datetime.now().strftime(args.file_date_format)}.txt"
+    filename = f"SBP_Supplemental_{datetime.now().strftime(args.file_date_format)}.txt"
     local_path = au.OUTPUT_DIR / folder / filename
 
-    session = au.aws_session(auto_login=not args.no_auto_login)
+    if session is None:
+        session = au.aws_session(auto_login=not args.no_auto_login)
     output_location = au.run_query(session, sql, database)
 
     rows = au.fetch_result_rows(session, output_location)

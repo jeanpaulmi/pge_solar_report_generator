@@ -182,28 +182,72 @@ writes a single empty file.
 
 Runs [sql/seasonal_county_stats.sql](sql/seasonal_county_stats.sql). Config:
 `DATABASE`, `SEASON` (`Spring` | `Summer` | `Fall` | `Winter` | `All`), `BATCH_IDS`
-(bash array — add/remove lines freely), optional `BILL_YEARS`, `DELIMITER`,
-`NO_HEADER`, `FILE_DATE_FORMAT`.
+(bash array — add/remove lines freely), `AUTO_CONFIRM`, optional `BILL_YEARS`,
+`DELIMITER`, `NO_HEADER`, `FILE_DATE_FORMAT`.
 
 `billyear IN (...)` auto-derives as the **report year (current year − 1)**. Set
 `BILL_YEARS="2024"` to override.
+
+### Batch ids are looked up for you
+
+`BATCH_IDS` takes short batch **numbers** — no need to paste full batch names:
+
+```bash
+BATCH_IDS=(
+  "252882"
+  "252883"
+)
+```
+
+Before running the report, every entry is looked up in `accountbillinglog` (one
+query covering all of them), listed with its contract count, and confirmed at the
+terminal:
+
+```
+[batch]  looking up 2 batch id(s) in accountbillinglog ...
+
+  batch                                   contract_id_count
+  --------------------------------------  -----------------
+  azkaban_PGE_pge_on_demand_batch_252882             152267
+  azkaban_PGE_pge_on_demand_batch_252883              11127
+
+Run the Winter report on 2 batch(es)? [y/N]:
+```
+
+Answering anything other than `y`/`yes` cancels without writing a report (exit 1).
+This replaces the old two-step flow of running `run_batch_id_name.sh` first and
+pasting the names across — that script still exists if you just want to check
+whether a batch was created, but the report no longer needs it.
+
+Full batch names still work and are verified the same way, since the lookup
+matches on a substring.
+
+- A batch number that matches **nothing** is reported as `[warn] no batch matching
+  '...'` and the prompt says how many are being ignored, so you can abort.
+- If **none** of the ids match, the report errors out instead of prompting.
+- If one number matches **several** batches, all of them are listed and included —
+  the prompt is where you catch that.
+- `AUTO_CONFIRM="true"` (or `--yes`) skips the prompt. Required for unattended
+  runs: with no terminal to answer, the script errors out rather than hanging.
+- `--no-resolve` uses the `BATCH_IDS` values verbatim, with no lookup and no
+  prompt.
 
 `DELIMITER` defaults to `tab`. It also accepts `comma`, `pipe`, `semicolon`, an
 escape such as `\t`, or a literal character — the names exist because a shell
 variable cannot easily carry a raw tab.
 
 Output — **tab separated**, **no quotes on any value**. `AVG_SOLARCHRG_RANGE` is
-formatted to exactly 2 decimal places; `AVG_SAVINGS_RANGE` is whole percentages:
+rounded to whole dollars and `AVG_SAVINGS_RANGE` to whole percentages:
 
 ```
-output/<season>_report_<YYYYMMDD_HHMMSS>/SBP_Suplemental_<YYYYMMDD>.txt
+output/<season>_report_<YYYYMMDD_HHMMSS>/SBP_Supplemental_<YYYYMMDD>.txt
 s3://gridx-temp/jpm/pge_solar_report/<season>_report_<YYYYMMDD_HHMMSS>/...
 ```
 
 ```
 PREMISE_COUNTY	AVG_SOLARCHRG_RANGE	AVG_SAVINGS_RANGE	SEASON	CUSTOMER_COUNT
-Fresno	$77.18 - $111.07	64% - 88%	Fall	8062
-Contra Costa	$71.92 - $109.50	56% - 82%	Fall	7302
+Fresno	$29 - $43	53% - 69%	Winter	704
+Santa Clara	$30 - $45	40% - 60%	Winter	647
 ```
 
 ## Useful flags
@@ -214,9 +258,15 @@ Both wrappers forward extra flags to the Python script:
 ./run_seasonal_report.sh --print-sql
 ```
 
-- `--print-sql` — render the SQL with all substitutions and exit (no query run)
+- `--print-sql` — render the SQL with all substitutions and exit. For the seasonal
+  report this still runs the batch lookup (the resolved names go into the SQL), but
+  that output goes to stderr so stdout stays pipeable. Add `--no-resolve` to skip
+  the lookup and render offline.
 - `--no-upload` — write the local copy only, skip S3 (also `SKIP_UPLOAD="true"`)
 - `--no-auto-login` — fail on expired credentials instead of opening an SSO login
+- `--partitions N` — step 1 only: split the ids across N files (also `PARTITIONS`)
+- `--yes` — step 2 only: skip the batch confirmation (also `AUTO_CONFIRM="true"`)
+- `--no-resolve` — step 2 only: use `BATCH_IDS` verbatim, no lookup, no prompt
 
 ## Layout
 
@@ -225,5 +275,7 @@ Both wrappers forward extra flags to the Python script:
 | `run_contract_ids.sh` / `run_seasonal_report.sh` | config + entry points |
 | `get_contract_ids.py` / `generate_seasonal_report.py` | step logic |
 | `athena_utils.py` | SQL templating, query execution, output writing, S3 upload |
-| `sql/` | the two queries, with `{{name}}` placeholders |
+| `batch_lookup.py` | batch number → batch name lookup, table, confirm prompt |
+| `run_batch_id_name.sh` / `batch_id_name.py` | optional standalone batch check |
+| `sql/` | the queries, with `{{name}}` placeholders |
 | `output/` | local copies of every run |

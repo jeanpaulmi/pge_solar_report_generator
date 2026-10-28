@@ -13,10 +13,10 @@ Configure and run it through ``run_batch_id_name.sh``.
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 
 import athena_utils as au
+import batch_lookup as bl
 
 
 def parse_args() -> argparse.Namespace:
@@ -45,72 +45,40 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def validate_batch_id(batch_id: str) -> str:
-    value = batch_id.strip()
-    # Letters, digits and underscores only: keeps LIKE wildcards and quotes out.
-    if not re.fullmatch(r"[A-Za-z0-9_]+", value):
-        raise ValueError(f"invalid batch id: {batch_id!r}")
-    return value
-
-
 def main() -> int:
     args = parse_args()
 
     database = au.validate_database(args.database)
-    batch_ids = [validate_batch_id(b) for b in args.batch_id]
+    batch_ids = [bl.validate_batch_id(b) for b in args.batch_id]
 
-    sqls = {
-        b: au.load_sql("batch_id_name.sql", {"database": database, "batch_id": b})
-        for b in batch_ids
-    }
+    sql = au.load_sql(
+        "batch_id_name.sql",
+        {"database": database, "batch_filter": bl.build_filter(batch_ids)},
+    )
 
     if args.print_sql:
-        print("\n\n".join(sqls.values()))
+        print(sql)
         return 0
 
     print(f"[config] database  : {database}")
     print(f"[config] batch ids : {', '.join(batch_ids)}")
 
     session = au.aws_session(auto_login=not args.no_auto_login)
+    matches, missing = bl.lookup(session, database, batch_ids)
+    bl.print_matches(matches, missing)
 
-    found: list[tuple[str, str]] = []  # (count, batch name)
-    missing: list[str] = []
-
-    for batch_id, sql in sqls.items():
-        output_location = au.run_query(session, sql, database)
-        rows = au.fetch_result_rows(session, output_location)
-        next(rows, None)  # drop the header row Athena always emits
-
-        matches = [(r[0], r[1]) for r in rows if r]
-        if not matches:
-            print(f"[warn]   no batch matching {batch_id!r}", file=sys.stderr)
-            missing.append(batch_id)
-        elif len(matches) > 1:
-            print(
-                f"[warn]   {batch_id!r} matched {len(matches)} batches; check which one you want",
-                file=sys.stderr,
-            )
-        found.extend(matches)
-
-    print()
-    if found:
-        width = max(len(name) for _, name in found)
-        print(f"{'batch':<{width}}  contract_id_count")
-        print(f"{'-' * width}  -----------------")
-        for count, name in found:
-            print(f"{name:<{width}}  {count:>17}")
-
-        print("\n# paste into run_seasonal_report.sh")
+    if matches:
+        print("\n# paste into run_seasonal_report.sh, or just use the batch numbers there")
         print("BATCH_IDS=(")
-        for _, name in found:
-            print(f'  "{name}"')
+        for match in matches:
+            print(f'  "{match.name}"')
         print(")")
 
     if missing:
         print(f"\n[done]   missing: {', '.join(missing)}")
         return 2
 
-    print(f"\n[done]   {len(found)} batch(es) found")
+    print(f"\n[done]   {len(matches)} batch(es) found")
     return 0
 
 

@@ -18,7 +18,7 @@ REPORT_YEAR=""
 #   1 = a single file (default)
 #   2 = two files of roughly equal size, 3 = three, and so on.
 # Any remainder goes to the earliest files (101 ids over 2 -> 51 + 50).
-PARTITIONS="1"
+PARTITIONS="5"
 
 # Set to "true" to write only the local copy and skip the S3 upload.
 SKIP_UPLOAD="false"
